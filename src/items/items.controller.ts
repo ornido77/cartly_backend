@@ -1,26 +1,22 @@
-import { Body, Controller, Get, Post } from '@nestjs/common';
+import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
+
 import { ItemsService } from './items.service';
+import { CreateItemDto } from './dto/create-item.dto';
+import { UserIdGuard } from '../common/guards/user-id.guard';
+import { CurrentUser } from '../common/decorators/current-user.decorator';
 
 @Controller('items')
+@UseGuards(UserIdGuard)
 export class ItemsController {
   constructor(private readonly itemsService: ItemsService) {}
+
   @Get()
-  getItems() {
-    return {
-      message: 'Items endpoint works',
-    };
+  async findAll(@CurrentUser() userId: string) {
+    return this.itemsService.findAll(userId);
   }
 
   @Post()
-  createItem(@Body() body: any) {
-    return {
-      message: 'Item created',
-      item: body,
-    };
-  }
-
-  @Get('test')
-  async testFirestore() {
-    return this.itemsService.createTest();
+  async create(@CurrentUser() userId: string, @Body() dto: CreateItemDto) {
+    return this.itemsService.create(userId, dto.name, dto.quantity);
   }
 }
