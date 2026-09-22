@@ -26,6 +26,25 @@ export class ItemsRepository {
     })) as ShoppingItem[];
   }
 
+  async findById(userId: string, itemId: string): Promise<ShoppingItem | null> {
+    const doc = await this.collection.doc(itemId).get();
+
+    if (!doc.exists) {
+      return null;
+    }
+
+    const data = doc.data();
+
+    if (data?.userId !== userId) {
+      return null;
+    }
+
+    return {
+      id: doc.id,
+      ...data,
+    } as ShoppingItem;
+  }
+
   async create(
     userId: string,
     name: string,
@@ -47,5 +66,59 @@ export class ItemsRepository {
     await docRef.set(item);
 
     return item;
+  }
+
+  async updateBought(
+    userId: string,
+    itemId: string,
+    bought: boolean,
+  ): Promise<ShoppingItem | null> {
+    const item = await this.findById(userId, itemId);
+
+    if (!item) {
+      return null;
+    }
+
+    await this.collection.doc(itemId).update({
+      bought,
+    });
+
+    return {
+      ...item,
+      bought,
+    };
+  }
+
+  async delete(userId: string, itemId: string): Promise<boolean> {
+    const item = await this.findById(userId, itemId);
+
+    if (!item) {
+      return false;
+    }
+
+    await this.collection.doc(itemId).delete();
+
+    return true;
+  }
+
+  async deleteAllBought(userId: string): Promise<number> {
+    const snapshot = await this.collection
+      .where('userId', '==', userId)
+      .where('bought', '==', true)
+      .get();
+
+    if (snapshot.empty) {
+      return 0;
+    }
+
+    const batch = this.firebaseService.getFirestore().batch();
+
+    snapshot.docs.forEach((doc) => {
+      batch.delete(doc.ref);
+    });
+
+    await batch.commit();
+
+    return snapshot.size;
   }
 }
